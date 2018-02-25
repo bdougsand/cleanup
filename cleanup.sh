@@ -60,7 +60,6 @@ tarfile=$projname.tar.gz
 tar -czf $tarfile $projname
 
 if [ -n "$S3_BUCKET" ]; then
-    echo "No S3 bucket set. " && exit 1
     s3_url=s3://$S3_BUCKET/$tarfile
 
     CLLOG "Uploading zip..."
