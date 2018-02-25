@@ -4,6 +4,7 @@ set -e
 
 dirname=$1
 verbose=${VERBOSE:-1}
+start_dir=$(pwd)
 
 CLLOG() {
     ((verbose)) && echo $@
@@ -54,24 +55,27 @@ fi
 
 cd ..
 
-if [ -z "$S3_BUCKET" ]; then
-    echo "No S3 bucket set; no ZIP file created" && exit 1
+CLLOG "Zipping project..."
+tarfile=$projname.tar.gz
+tar -czf $tarfile $projname
+
+if [ -n "$S3_BUCKET" ]; then
+    echo "No S3 bucket set. " && exit 1
+    s3_url=s3://$S3_BUCKET/$tarfile
+
+    CLLOG "Uploading zip..."
+    aws s3 cp $tarfile $s3_url
+
+    CLLOG "Signing URL..."
+    signed_url=$(aws s3 presign $s3_url --expires-in=${S3_EXPIRATION:-86400})
+
+    CLLOG "Cleaning up..."
+    rm $tarfile
+
+    echo $signed_url
+else
+    mv $tarfile $start_dir/
 fi
 
-s3_url=s3://$S3_BUCKET/$projname.tar.gz
-
-CLLOG "Zipping project..."
-tar -czf $projname.tar.gz $projname
-
-CLLOG "Uploading zip..."
-aws s3 cp $projname.tar.gz $s3_url
-
-CLLOG "Signing URL..."
-signed_url=$(aws s3 presign $s3_url --expires-in=${S3_EXPIRATION:-86400})
-
-CLLOG "Cleaning up..."
-rm $projname.tar.gz
 rm -r $projname
 
-CLLOG "Done."
-echo $signed_url
